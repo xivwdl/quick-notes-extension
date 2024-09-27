@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Notes</title>
+    <link rel="stylesheet" href="libs/simplemde.min.css">
+    <style>
+        body {
+            width: 400px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #f7f7f7;
+            border-radius: 8px !important;
+            overflow: hidden !important;
+            position: relative;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 8px;
+            pointer-events: none;
+            box-shadow: 0 0 0 9999px #f7f7f7;
+        }
+        .view {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        #noteInputContainer, #noteListContainer {
+            padding: 0px 4px;
+        }
+        .CodeMirror {
+            height: 100px;
+        }
+        .editor-toolbar {
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            padding: 0px 4px;
+        }
+        .CodeMirror-scroll {
+            min-height: 150px;
+        }
+        .CodeMirror-wrap {
+            border-top: 1px solid #ddd;
+            border-left: none;
+            border-right: none;
+            border-bottom: none;
+            padding: 4px 0;
+        }
+        .CodeMirror-lines {
+            padding: 4px;
+        }
+        button {
+            background-color: #2c3e50;
+            color: #fff;
+            border: 1px solid #2c3e50;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            border-radius: 8px;
+            margin-right: 8px;
+        }
+        button:hover {
+            background-color: #364d64;
+            border-color: #364d64;
+        }
+        button.outline {
+            background-color: transparent;
+            color: #2c3e50;
+        }
+        button.outline:hover {
+            background-color: #2c3e50;
+            color: #fff;
+        }
+        .icon-button {
+            background-color: transparent;
+            border: 1px solid #2c3e50;
+            cursor: pointer;
+            padding: 4px;
+            transition: all 0.3s;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .icon-button:hover {
+            background-color: #2c3e50;
+        }
+        .icon-button img {
+            width: 16px;
+            height: 16px;
+            filter: invert(0);
+            transition: filter 0.3s;
+        }
+        .icon-button:hover img {
+            filter: invert(1);
+        }
+        #noteList {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0 0 0; 
+        }
+        .note-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .note-item:hover {
+            background-color: #f5f5f5;
+        }
+        .note-first-word {
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .note-date {
+            font-size: 12px;
+            color: #757575;
+        }
+        #searchInput {
+            width: calc(100% - 16px);
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .hidden {
+            display: none;
+        }
+        .button-container {
+            display: flex;
+            justify-content: flex-start;
+            padding: 0px 0;
+        }
+        .note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            padding-right: 5px;
+            border-bottom: none;
+        }
+        .note-actions {
+            display: flex;
+            gap: 0px;
+        }
+        #noteDate {
+            font-size: 14px;
+            color: #757575;
+            margin: 0;
+        }
+        #noteContent .editor-preview {
+            padding: 10px;
+            background-color: #fff;
+            border: none;
+            border-radius: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="mainView">
+        <div class="view">
+            <div id="noteInputContainer">
+                <textarea id="noteInput"></textarea>
+            </div>
+        </div>
+        <div class="button-container">
+            <button id="saveNote" data-i18n="save">Save</button>
+            <button id="showNotes" class="outline" data-i18n="showNotes">Show Notes</button>
+        </div>
+    </div>
+
+    <div id="notesView" class="hidden">
+        <div class="view">
+            <div id="noteListContainer" style="padding: 10px 10px 2px 10px;"> 
+                <input type="text" id="searchInput" data-i18n-placeholder="search" placeholder="Search notes...">
+                <div id="noteList"></div>
+            </div>
+        </div>
+        <div class="button-container">
+            <button id="backToMain">Назад</button>
+        </div>
+    </div>
+
+    <div id="noteDetailsView" class="hidden">
+        <div class="view" id="noteDetailsContainer">
+            <div class="note-header">
+                <h3 id="noteDate"></h3>
+                <div class="note-actions">
+                    <button id="editNote" class="icon-button" title="Редактировать"><img src="icons/edit-pencil.svg" alt="Edit"></button>
+                    <button id="deleteNote" class="icon-button" title="Удалить"><img src="icons/trash.svg" alt="Delete"></button>
+                </div>
+            </div>
+            <div id="noteContent"></div>
+        </div>
+        <div class="button-container">
+            <button id="backToNotes" data-i18n="back">Back</button>
+        </div>
+    </div>
+
+    <div id="editNoteView" class="hidden">
+        <div class="view">
+            <div id="editNoteContainer">
+                <textarea id="editNoteInput"></textarea>
+            </div>
+        </div>
+        <div class="button-container">
+            <button id="saveEditedNote">Сохранить</button>
+            <button id="cancelEditNote" class="outline">Отменить</button>
+        </div>
+    </div>
+
+    <script src="libs/simplemde.min.js"></script>
+    <script type="module" src="popup.js"></script>
+</body>
+</html>
