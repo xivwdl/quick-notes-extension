@@ -10,7 +10,7 @@ Quick Notes is a handy extension for quickly creating notes right in the Chrome 
 - Search through saved notes
 - Edit and delete notes
 
-## Perfect for:
+## Perfect for
 
 - Quick recording of ideas
 - Saving important information
