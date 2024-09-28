@@ -102,12 +102,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const noteElement = document.createElement('div');
             noteElement.className = 'note-item';
             
-            // Извлекаем первое слово, игнорируя символы разметки Markdown
-            const firstWord = note.text
-                .replace(/^[#*_`]+/, '')  // Удаляем символы разметки в начале
-                .trim()
-                .split(/\s+/)[0]
-                .replace(/[#*_`]+$/, ''); // Удаляем символы разметки в конце первого слова
+            // Extract the first line and remove Markdown symbols
+            const firstLine = note.text
+                .split('\n')[0]
+                .replace(/^[#*_`]+/, '')  // Remove Markdown symbols at the start
+                .replace(/[#*_`]+$/, '')  // Remove Markdown symbols at the end
+                .trim();
+
             const noteDate = new Date(note.date);
             const formattedDate = new Intl.DateTimeFormat(navigator.language, {
                 year: 'numeric',
@@ -119,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }).format(noteDate);
             
             noteElement.innerHTML = `
-                <div class="note-first-word">${firstWord}</div>
+                <div class="note-first-line" title="${firstLine}">${firstLine}</div>
                 <div class="note-date">${formattedDate}</div>
             `;
             
@@ -201,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Удаление зме��к
+    // Удаление змек
     function deleteNote(index) {
         if (confirm(t('deleteConfirm'))) {
             notes.splice(index, 1);
