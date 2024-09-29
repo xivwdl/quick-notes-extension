@@ -93,9 +93,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Отображение заеток
     function displayNotes() {
         const searchTerm = searchInput.value.toLowerCase();
-        const filteredNotes = notes.filter(note => 
-            note.text.toLowerCase().includes(searchTerm)
-        );
+        const filteredNotes = notes.filter(note => {
+            const firstLine = note.text
+                .split('\n')[0]
+                .replace(/^[#*_`]+/, '')
+                .replace(/[#*_`]+$/, '')
+                .trim()
+                .toLowerCase();
+            return firstLine.includes(searchTerm);
+        });
+
+        // Сортировка заметок по дате (от новых к старым)
+        filteredNotes.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         noteList.innerHTML = '';
         filteredNotes.forEach((note, index) => {
@@ -124,14 +133,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="note-date">${formattedDate}</div>
             `;
             
-            noteElement.addEventListener('click', () => showNoteDetails(index));
+            noteElement.addEventListener('click', () => showNoteDetails(note));
             noteList.appendChild(noteElement);
         });
     }
 
     // Показать детали заметк
-    function showNoteDetails(index) {
-        const note = notes[index];
+    function showNoteDetails(note) {
         const noteDate = new Date(note.date);
         const formattedDate = new Intl.DateTimeFormat(navigator.language, {
             year: 'numeric',
@@ -161,8 +169,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         viewerMde.togglePreview();
 
-        document.getElementById('editNote').onclick = () => editNote(index);
-        document.getElementById('deleteNote').onclick = () => deleteNote(index);
+        document.getElementById('editNote').onclick = () => editNote(notes.findIndex(n => n.date === note.date));
+        document.getElementById('deleteNote').onclick = () => deleteNote(notes.findIndex(n => n.date === note.date));
 
         notesView.classList.add('hidden');
         noteDetailsView.classList.remove('hidden');
