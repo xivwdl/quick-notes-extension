@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let notes = [];
     let simplemde;
 
-    // Инициализация SimpleMDE
+    // Initialization SimpleMDE
     setTimeout(() => {
         try {
             if (typeof SimpleMDE === 'undefined') {
@@ -52,12 +52,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 100);
 
-    // Загрузка заметок при открытии
+    // Loading notes on opening
     chrome.storage.local.get(['notes'], function(result) {
         notes = result.notes || [];
     });
 
-    // Сохранение заметки
+    // Saving a note
     saveNoteBtn.addEventListener('click', function() {
         const noteText = simplemde.value();
         if (noteText.trim() !== '') {
@@ -72,25 +72,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Показать список заметок
+    // Show a list of notes
     showNotesBtn.addEventListener('click', function() {
         mainView.classList.add('hidden');
         notesView.classList.remove('hidden');
         displayNotes();
     });
 
-    // Вернуться к главному экрану
+    // Go back to the main screen
     backToMainBtn.addEventListener('click', function() {
         mainView.classList.remove('hidden');
         notesView.classList.add('hidden');
     });
 
-    // Поиск заметок
+    // Search for notes
     searchInput.addEventListener('input', function() {
         displayNotes();
     });
 
-    // Отображение заеток
+    // Showing notes
     function displayNotes() {
         const searchTerm = searchInput.value.toLowerCase();
         const filteredNotes = notes.filter(note => {
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return firstLine.includes(searchTerm);
         });
 
-        // Сортировка заметок по дате (от новых к старым)
+        // Sort notes by date (from new to old)
         filteredNotes.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         noteList.innerHTML = '';
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Показать детали заметк
+    // Show the details of the note
     function showNoteDetails(note) {
         const noteDate = new Date(note.date);
         const formattedDate = new Intl.DateTimeFormat(navigator.language, {
@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
         noteDetailsView.classList.remove('hidden');
     }
 
-    // Редактирование заметки
+    // Editing a note
     function editNote(index) {
         const note = notes[index];
         editingNoteIndex = index;
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
         noteDetailsView.classList.add('hidden');
         editNoteView.classList.remove('hidden');
         
-        // Инициализация SimpleMDE для редактирования
+        // Initializing Simple MODE for editing
         if (!editNoteMde) {
             editNoteMde = new SimpleMDE({ 
                 element: editNoteInput,
@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Удаление змек
+    // Deleting notes
     function deleteNote(index) {
         if (confirm(t('deleteConfirm'))) {
             notes.splice(index, 1);
