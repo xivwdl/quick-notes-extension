@@ -16,11 +16,120 @@ document.addEventListener('DOMContentLoaded', function() {
     const editNoteInput = document.getElementById('editNoteInput');
     const saveEditedNoteBtn = document.getElementById('saveEditedNote');
     const cancelEditNoteBtn = document.getElementById('cancelEditNote');
+    const openSettingsFromMainBtn = document.getElementById('openSettingsFromMain');
+    const openSettingsFromNotesBtn = document.getElementById('openSettingsFromNotes');
+    const settingsView = document.getElementById('settingsView');
+    const backFromSettingsBtn = document.getElementById('backFromSettings');
+    const exportNotesBtn = document.getElementById('exportNotes');
     let editingNoteIndex = -1;
     let editNoteMde;
 
     let notes = [];
+    let notesById = new Map();
+    let lastView = 'main';
+    let activeAreaName = 'local';
     let simplemde;
+
+    // Storage helpers
+    function getStorageByAreaName(areaName) {
+        return chrome.storage.local;
+    }
+
+    function generateNoteKey() {
+        return 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    }
+
+    function getAllNoteKeys(areaName, callback) {
+        const storage = getStorageByAreaName(areaName);
+        storage.get(null, (all) => {
+            const keys = Object.keys(all || {}).filter(k => k.startsWith('note_'));
+            callback(keys);
+        });
+    }
+
+    function readAllNotes(areaName, callback) {
+        const storage = getStorageByAreaName(areaName);
+        storage.get(null, (all) => {
+            const entries = Object.entries(all || {}).filter(([k, v]) => k.startsWith('note_') && v && typeof v === 'object');
+            const result = entries.map(([id, data]) => ({ id, text: data.text, date: data.date }));
+            result.sort((a, b) => new Date(b.date) - new Date(a.date));
+            callback(result);
+        });
+    }
+
+    function writeNote(areaName, note, callback) {
+        const storage = getStorageByAreaName(areaName);
+        const key = note.id || generateNoteKey();
+        const value = { text: note.text, date: note.date || new Date().toISOString() };
+        storage.set({ [key]: value }, () => callback && callback({ id: key, ...value }));
+    }
+
+    function removeNote(areaName, noteId, callback) {
+        const storage = getStorageByAreaName(areaName);
+        storage.remove(noteId, () => callback && callback());
+    }
+
+    function clearAllNotes(areaName, callback) {
+        getAllNoteKeys(areaName, (keys) => {
+            if (keys.length === 0) return callback && callback();
+            const storage = getStorageByAreaName(areaName);
+            storage.remove(keys, () => callback && callback());
+        });
+    }
+
+    function copyAllNotes(sourceArea, destinationArea, callback) {
+        readAllNotes(sourceArea, (list) => {
+            clearAllNotes(destinationArea, () => {
+                if (list.length === 0) return callback && callback();
+                const obj = {};
+                list.forEach(n => { obj[n.id] = { text: n.text, date: n.date }; });
+                const dest = getStorageByAreaName(destinationArea);
+                dest.set(obj, () => callback && callback());
+            });
+        });
+    }
+
+    function runMigrationIfNeeded(callback) {
+        chrome.storage.local.get(['migrationDone', 'notes'], (res) => {
+            const alreadyMigrated = !!res.migrationDone;
+            const legacy = Array.isArray(res.notes) ? res.notes : null;
+            if (alreadyMigrated || !legacy) {
+                return callback && callback();
+            }
+            getAllNoteKeys('local', (existingKeys) => {
+                if (existingKeys.length > 0) {
+                    chrome.storage.local.set({ migrationDone: true }, () => callback && callback());
+                    return;
+                }
+                const toSet = {};
+                legacy.forEach((n, idx) => {
+                    const id = generateNoteKey() + '_' + idx;
+                    toSet[id] = { text: n.text, date: n.date };
+                });
+                chrome.storage.local.set(toSet, () => {
+                    const newKeys = Object.keys(toSet);
+                    chrome.storage.local.get(newKeys, (after) => {
+                        const ok = Object.keys(after || {}).length === newKeys.length;
+                        if (ok) {
+                            chrome.storage.local.remove('notes', () => {
+                                chrome.storage.local.set({ migrationDone: true }, () => callback && callback());
+                            });
+                        } else {
+                            callback && callback();
+                        }
+                    });
+                });
+            });
+        });
+    }
+
+    function refreshNotes(callback) {
+        readAllNotes(activeAreaName, (list) => {
+            notes = list;
+            notesById = new Map(list.map(n => [n.id, n]));
+            callback && callback();
+        });
+    }
 
     // Initialization SimpleMDE
     setTimeout(() => {
@@ -52,22 +161,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 100);
 
-    // Loading notes on opening
-    chrome.storage.local.get(['notes'], function(result) {
-        notes = result.notes || [];
+    // Startup: migrate, load sync status, then load notes
+    runMigrationIfNeeded(() => {
+        refreshNotes(() => {});
     });
 
-    // Saving a note
+    // Saving a note (to active storage)
     saveNoteBtn.addEventListener('click', function() {
-        const noteText = simplemde.value();
+        const noteText = simplemde && typeof simplemde.value === 'function' ? simplemde.value() : (noteInput.value || '');
         if (noteText.trim() !== '') {
-            const newNote = {
-                text: noteText,
-                date: new Date().toISOString()
-            };
-            notes.unshift(newNote);
-            chrome.storage.local.set({ notes: notes }, function() {
-                simplemde.value('');
+            writeNote(activeAreaName, { text: noteText }, (saved) => {
+                if (simplemde && typeof simplemde.value === 'function') simplemde.value('');
+                refreshNotes(displayNotes);
             });
         }
     });
@@ -133,13 +238,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="note-date">${formattedDate}</div>
             `;
             
-            noteElement.addEventListener('click', () => showNoteDetails(note));
+            noteElement.addEventListener('click', () => showNoteDetails(note.id));
             noteList.appendChild(noteElement);
         });
     }
 
     // Show the details of the note
-    function showNoteDetails(note) {
+    function showNoteDetails(noteId) {
+        const note = notesById.get(noteId);
+        if (!note) return;
         const noteDate = new Date(note.date);
         const formattedDate = new Intl.DateTimeFormat(navigator.language, {
             year: 'numeric',
@@ -169,17 +276,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         viewerMde.togglePreview();
 
-        document.getElementById('editNote').onclick = () => editNote(notes.findIndex(n => n.date === note.date));
-        document.getElementById('deleteNote').onclick = () => deleteNote(notes.findIndex(n => n.date === note.date));
+        document.getElementById('editNote').onclick = () => editNote(note.id);
+        document.getElementById('deleteNote').onclick = () => deleteNoteById(note.id);
 
         notesView.classList.add('hidden');
         noteDetailsView.classList.remove('hidden');
     }
 
     // Editing a note
-    function editNote(index) {
-        const note = notes[index];
-        editingNoteIndex = index;
+    function editNote(noteId) {
+        const note = notesById.get(noteId);
+        if (!note) return;
+        editingNoteIndex = noteId;
         
         editNoteInput.value = note.text;
         
@@ -211,28 +319,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Deleting notes
-    function deleteNote(index) {
+    function deleteNoteById(noteId) {
         if (confirm(t('deleteConfirm'))) {
-            notes.splice(index, 1);
-            chrome.storage.local.set({ notes: notes }, function() {
+            removeNote(activeAreaName, noteId, function() {
                 noteDetailsView.classList.add('hidden');
                 notesView.classList.remove('hidden');
-                displayNotes();
+                refreshNotes(displayNotes);
             });
         }
     }
 
     saveEditedNoteBtn.addEventListener('click', function() {
         if (editingNoteIndex !== -1) {
-            const editedText = editNoteMde.value();
-            notes[editingNoteIndex].text = editedText;
-            notes[editingNoteIndex].date = new Date().toISOString();
-            
-            chrome.storage.local.set({ notes: notes }, function() {
+            const editedText = editNoteMde && typeof editNoteMde.value === 'function' ? editNoteMde.value() : editNoteInput.value;
+            const noteId = editingNoteIndex;
+            const updated = { id: noteId, text: editedText, date: new Date().toISOString() };
+            writeNote(activeAreaName, updated, function() {
                 editNoteView.classList.add('hidden');
                 notesView.classList.remove('hidden');
-                displayNotes();
                 editingNoteIndex = -1;
+                refreshNotes(displayNotes);
             });
         }
     });
@@ -266,4 +372,51 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     localizeInterface();
+
+    // Settings navigation
+    function showSettings(fromView) {
+        lastView = fromView || 'main';
+        if (lastView === 'notes') {
+            notesView.classList.add('hidden');
+        } else {
+            mainView.classList.add('hidden');
+        }
+        settingsView.classList.remove('hidden');
+    }
+    function hideSettings() {
+        settingsView.classList.add('hidden');
+        if (lastView === 'notes') {
+            notesView.classList.remove('hidden');
+            displayNotes();
+        } else {
+            mainView.classList.remove('hidden');
+        }
+    }
+
+    if (openSettingsFromMainBtn) openSettingsFromMainBtn.addEventListener('click', () => showSettings('main'));
+    if (openSettingsFromNotesBtn) openSettingsFromNotesBtn.addEventListener('click', () => showSettings('notes'));
+    if (backFromSettingsBtn) backFromSettingsBtn.addEventListener('click', hideSettings);
+
+    // Export all notes
+    if (exportNotesBtn) {
+        exportNotesBtn.addEventListener('click', function() {
+            readAllNotes(activeAreaName, (list) => {
+                const zip = new JSZip();
+                list.forEach((note, index) => {
+                    const fileName = `note_${new Date(note.date).toISOString().replace(/:/g, '-')}.md`;
+                    const content = `---\nDate: ${note.date}\n---\n\n${note.text}\n\n`;
+                    zip.file(fileName, content);
+                });
+
+                zip.generateAsync({type:"blob", compression: "DEFLATE"})
+                    .then(function(content) {
+                        saveAs(content, "quick_notes_export.zip");
+                    })
+                    .catch(function(error) {
+                        console.error("Error generating zip:", error);
+                        alert(t('exportError'));
+                    });
+            });
+        });
+    }
 });

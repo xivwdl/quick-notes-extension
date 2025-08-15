@@ -89,7 +89,7 @@
             cursor: pointer;
             padding: 4px;
             transition: all 0.3s;
-            border-radius: 4px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -100,11 +100,31 @@
         .icon-button img {
             width: 16px;
             height: 16px;
-            filter: invert(0);
+            /* Match base icon color to button color (#2c3e50) */
+            filter: invert(21%) sepia(14%) saturate(1081%) hue-rotate(167deg) brightness(92%) contrast(89%);
             transition: filter 0.3s;
         }
         .icon-button:hover img {
             filter: invert(1);
+        }
+        /* Slightly larger icon for settings buttons only */
+        #openSettingsFromMain img,
+        #openSettingsFromNotes img {
+            width: 18px;
+            height: 18px;
+        }
+        /* Settings buttons: match icon-button size/rounding and stick to bottom-right */
+        #openSettingsFromMain,
+        #openSettingsFromNotes {
+            position: absolute;
+            right: 2px;
+            bottom: 10px;
+            width: 32px;
+            height: 32px;
+            padding: 4px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            z-index: 10;
         }
         #noteList {
             max-height: 200px;
@@ -188,6 +208,92 @@
             text-overflow: ellipsis;
             max-width: 200px; /* Adjust this value as needed */
         }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+        }
+        .settings-row:last-child {
+            border-bottom: none;
+        }
+        .settings-title {
+            margin: 0;
+            padding: 10px;
+        }
+        .settings-footer {
+            padding: 8px 10px 12px 10px;
+            text-align: right;
+        }
+        .settings-footer a {
+            color: #959694;
+            text-decoration: none;
+            font-size: 11px;
+        }
+        .settings-footer a:hover {
+            color: #00E13F;
+        }
+        /* Settings view bottom bar: Back + right-aligned link */
+        #settingsView .button-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #settingsView .button-container a {
+            color: #959694;
+            text-decoration: none;
+            font-size: 11px;
+            margin-right: 4px;
+        }
+        #settingsView .button-container a:hover {
+            color: #00E13F;
+        }
+        /* Export button rectangle matching sync toggle width */
+        #exportNotes {
+            width: 36px;
+            height: 32px;
+            box-sizing: border-box;
+            margin-right: 0px;
+        }
+        /* Simple toggle */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .2s;
+            border-radius: 20px;
+            border: 1px solid #bbb;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px; width: 16px;
+            left: 1px; bottom: 1px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2c3e50;
+            border-color: #2c3e50;
+        }
+        input:checked + .slider:before {
+            transform: translateX(16px);
+        }
     </style>
 </head>
 <body>
@@ -200,6 +306,7 @@
         <div class="button-container">
             <button id="saveNote" data-i18n="save">Save</button>
             <button id="showNotes" class="outline" data-i18n="showNotes">Show Notes</button>
+            <button id="openSettingsFromMain" class="icon-button" data-i18n-title="settings"><img src="icons/gear.svg" data-i18n-alt="settings"></button>
         </div>
     </div>
 
@@ -212,6 +319,7 @@
         </div>
         <div class="button-container">
             <button id="backToMain" data-i18n="back">Back</button>
+            <button id="openSettingsFromNotes" class="icon-button" data-i18n-title="settings"><img src="icons/gear.svg" data-i18n-alt="settings"></button>
         </div>
     </div>
 
@@ -243,7 +351,23 @@
         </div>
     </div>
 
+    <div id="settingsView" class="hidden">
+        <div class="view">
+            <h3 class="settings-title" data-i18n="settings">Settings</h3>
+            <div class="settings-row">
+                <span data-i18n="exportAll">Export all notes</span>
+                <button id="exportNotes" class="icon-button" data-i18n-title="export"><img src="icons/export.svg" data-i18n-alt="export"></button>
+            </div>
+        </div>
+        <div class="button-container">
+            <button id="backFromSettings" data-i18n="back">Back</button>
+            <a href="https://d1ma.xyz/" target="_blank" rel="noopener noreferrer">made by d1ma</a>
+        </div>
+    </div>
+
     <script src="libs/simplemde.min.js"></script>
+    <script src="libs/jszip.min.js"></script>
+    <script src="libs/FileSaver.min.js"></script>
     <script type="module" src="popup.js"></script>
 </body>
 </html>
