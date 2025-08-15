@@ -1,58 +1,6 @@
 {
     "appDescription": {
-      "message": "Quick Notes: write and save ideas in one click. Simple Markdown editor with local data storage.",
+      "message": "Quick Notes: escribe y guarda ideas con un solo clic. Editor de rebajas simple con almacenamiento de datos local.",
       "description": "The description of the extension"
-    },
-    "save": {
-        "message": "Save",
-        "description": "Save button text"
-    },
-    "showNotes": {
-        "message": "Show Notes",
-        "description": "Show Notes button text"
-    },
-    "back": {
-        "message": "Back",
-        "description": "Back button text"
-    },
-    "settings": {
-        "message": "Settings",
-        "description": "Settings button title"
-    },
-    "edit": {
-        "message": "Edit",
-        "description": "Edit button title"
-    },
-    "delete": {
-        "message": "Delete",
-        "description": "Delete button title"
-    },
-    "cancel": {
-        "message": "Cancel",
-        "description": "Cancel button text"
-    },
-    "note": {
-        "message": "Note",
-        "description": "Note label"
-    },
-    "deleteConfirm": {
-        "message": "Are you sure you want to delete this note?",
-        "description": "Confirmation message for deleting a note"
-    },
-    "search": {
-        "message": "Search notes...",
-        "description": "Search input placeholder"
-    },
-    "exportAll": {
-        "message": "Export all notes",
-        "description": "Export notes label"
-    },
-    "export": {
-        "message": "Export",
-        "description": "Export button title"
-    },
-    "exportError": {
-        "message": "Error exporting notes. Please try again.",
-        "description": "Error message for export failure"
     }
 }
